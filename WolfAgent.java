@@ -88,7 +88,7 @@ import se.sics.tasim.tac03.aw.SCMAgent;
 public class WolfAgent extends SCMAgent {
 
   private static final Logger log =
-    Logger.getLogger(WolfAgent.class.getName());
+    Logger.getLogger(ExampleAgent.class.getName());
 
   private Random random = new Random();
 
@@ -137,18 +137,28 @@ public class WolfAgent extends SCMAgent {
       // where the delivery time is not beyond the end of the game.
       // See the comments in the beginning of this file.
       if ((dueDate - currentDate) >= 6 && (dueDate <= lastBidDueDate)) {
-	int resPrice = rfqBundle.getReservePricePerUnit(i);
+       // The maximal price the sender of the request is willing to pay
+       // per unit in the order
+       int resPrice = rfqBundle.getReservePricePerUnit(i);
 
-  //*********************************************
-    // TODO: Change this to a non-random method
-	int offeredPrice = (int)
-	  (resPrice * (1.0 - random.nextDouble() * priceDiscountFactor));
-	addCustomerOffer(rfqBundle, i, offeredPrice);
+       // Find a price to offer to the customer
+       int offeredPrice = createCustomerOfferPrice(resPrice);
+       // Adds an offer to be sent to the customers in response to a RFQ
+       addCustomerOffer(rfqBundle, i, offeredPrice);
       }
     }
 
     // Finished adding offers. Send all offers to the customers.
     sendCustomerOffers();
+  }
+
+  /**
+   * Create a price for the order that is profitable and will be accepted
+   * Anything higher than the reserve price will not be accepted
+   * @param reservePrice the maximum price a customer will pay
+   */
+  protected int createCustomerOfferPrice(int reservePrice){
+    return (int)(reservePrice * (1.0 - random.nextDouble() * priceDiscountFactor));
   }
 
   /**
@@ -166,70 +176,107 @@ public class WolfAgent extends SCMAgent {
       Order order = newOrders[i];
       int productID = order.getProductID();
       int quantity = order.getQuantity();
+      // Get the components required to produce the product
       int[] components = bomBundle.getComponentsForProductID(productID);
       if (components != null) {
-	for (int j = 0, m = components.length; j < m; j++) {
-	  componentDemand.addInventory(components[j], quantity);
-	}
+        for (int j = 0, m = components.length; j < m; j++) {
+          // Add the required components to the demanded array
+          componentDemand.addInventory(components[j], quantity);
+        }
       }
     }
 
-    // Order the components needed to fulfill the new orders from the
-    // suppliers.
-    ComponentCatalog catalog = getComponentCatalog();
-    int currentDate = getCurrentDate();
-    for (int i = 0, n = componentDemand.getProductCount(); i < n; i++) {
-      int quantity = componentDemand.getQuantity(i);
-      if (quantity > 0) {
-	int productID = componentDemand.getProductID(i);
-	String[] suppliers = catalog.getSuppliersForProduct(productID);
-	if (suppliers != null) {
-	  // Order all components from one supplier chosen by random
-	  // for simplicity.
-    //*********************************************
-    // TODO: Change this to a non-random method
-    // TODO: Purchase from multiple suppliers
-	  int supIndex = random.nextInt(suppliers.length);
+    // Create the orders to supplier
+    handleSupplierOrders();
 
-	  addSupplierRFQ(suppliers[supIndex], productID, quantity,
-			 0, currentDate + 2);
-
-	  // Assume that the supplier will be able to deliver the
-	  // components and remove this demand.
-	  componentDemand.addInventory(productID, -quantity);
-
-	} else {
-	  // There should always be suppliers for all components so
-	  // this point should never be reached.
-	  log.severe("no suppliers for product " + productID);
-	}
-      }
-    }
     sendSupplierRFQs();
   }
 
   /**
+   * Handles the creation of RFQs to suppliers
+   */
+  protected void handleSupplierOrders(){
+    ComponentCatalog catalog = getComponentCatalog();
+    int currentDate = getCurrentDate();
+
+    for(int i = 0, n = componentDemand.getProductCount(); i<n;i++){
+      // Get the quantity demanded of a particular component
+      int quantity = componentDemand.getQuantity(i);
+      if(quantity > 0){
+        int productID = componentDemand.getProductID(i);
+        String[] suppliers = catalog.getSuppliersForProduct(productID);
+        if(suppliers != null){
+          // TODO: Change this to non-random
+          int supIndex = random.nextInt(suppliers.length);
+          // TODO: Create a method to calculate reserve price for suppliers
+          int reservePrice = calculateSupplyReservePrice();
+          addSupplierRFQ(suppliers[supIndex], productID, quantity,
+           reservePrice, currentDate+2);
+
+          // Assume that the supplier will be able to dliver the components
+          componentDemand.addInventory(productID, -quantity);
+        }
+        else{
+          log.severe("No suppliers for product " + productID);
+        }
+      }
+    }
+  }
+
+  // Calculate a price to order components at while still being profitable
+  // TODO: Currently unbounded at 0
+  protected int calculateSupplyReservePrice(){
+    return 0;
+  }
+
+  /**
    * Called when a bundle of offers have been received from a
-   * supplier. In TAC03 SCM suppliers only send on offer bundle per
+   * supplier. In TAC03 SCM suppliers only send one offer bundle per
    * day in reply to RFQs (and only if they had something to offer).
    *
    * @param supplierAddress the supplier that sent the offers
    * @param offers a bundle of offers
    */
   protected void handleSupplierOffers(String supplierAddress,
-				      OfferBundle offers) {
+                      OfferBundle offers) {
     // Earliest complete is always after partial offers so the offer
     // bundle is traversed backwards to always accept earliest offer
     // instead of the partial (the server will ignore the second
     // order for the same offer).
-    //*********************************************
-    // TODO: Change this to a hybrid cheapest/earliest method
+
+    // Set cheapest offer to last index
+    int cheapestOfferIndex = offers.size()-1;
+    // Initialize the beginning price to the last price in the array
+    int currentUnitPrice = offers.getUnitPrice(offers.size() -1);
+
+    // The ratio over the cheapest price we are willing to spend.
+    double supplierPriceTolerance = 1.1;
+
+    // TODO: set correctQuantity quantity in RFQID of offers.getRFQID(i)
+    int correctQuantity = 0;
+    int bestOffer = offers.size() -1;
+    // Loop through the offers and determine the cheapest offer
     for (int i = offers.size() - 1; i >= 0; i--) {
       // Only order if quantity > 0 (otherwise it is only a price quote)
-      if (offers.getQuantity(i) > 0) {
-	addSupplierOrder(supplierAddress, offers, i);
+
+      if(offers.getUnitPrice(i) < currentUnitPrice){
+        currentUnitPrice = offers.getUnitPrice(i);
+        cheapestOfferIndex = i;
       }
     }
+    // Loop through the offers, if an offer has the correct quantity and
+    // is within our price tolerance of the cheapest price, set it as the best
+    // offer.
+    for (int i = offers.size() -1; i>=0; i--){
+
+      if (offers.getQuantity(i) > 0 && offers.getQuantity(i) >= correctQuantity){
+        if(offers.getUnitPrice(i) <= cheapestOfferIndex*supplierPriceTolerance){
+          bestOffer = i;
+        }
+      }
+    }
+
+    addSupplierOrder(supplierAddress, offers, bestOffer);
     sendSupplierOrders();
   }
 
@@ -255,54 +302,54 @@ public class WolfAgent extends SCMAgent {
     Order[] orders = customerOrders.getActiveOrders();
     if (orders != null) {
       for (int i = 0, n = orders.length; i < n; i++) {
-	Order order = orders[i];
-	int productID = order.getProductID();
-	int dueDate = order.getDueDate();
-	int orderedQuantity = order.getQuantity();
-	int inventoryQuantity = inventory.getInventoryQuantity(productID);
+    Order order = orders[i];
+    int productID = order.getProductID();
+    int dueDate = order.getDueDate();
+    int orderedQuantity = order.getQuantity();
+    int inventoryQuantity = inventory.getInventoryQuantity(productID);
 
-	if ((currentDate >= (dueDate - 1)) && (dueDate >= latestDueDate)
-	    && addDeliveryRequest(order)) {
-	  // It was time to deliver this order and it could be
-	  // delivered (the method above ensures this). The order has
-	  // automatically been marked as delivered and the products
-	  // have been removed from the inventory status (to avoid
-	  // delivering the same products again).
+    if ((currentDate >= (dueDate - 1)) && (dueDate >= latestDueDate)
+        && addDeliveryRequest(order)) {
+      // It was time to deliver this order and it could be
+      // delivered (the method above ensures this). The order has
+      // automatically been marked as delivered and the products
+      // have been removed from the inventory status (to avoid
+      // delivering the same products again).
 
-	} else if (dueDate <= latestDueDate) {
+    } else if (dueDate <= latestDueDate) {
 
-	  // It is too late to produce and deliver this order
-	  log.info("canceling to late order " + order.getOrderID()
-		   + " (dueDate=" + order.getDueDate()
-		   + ",date=" + currentDate + ')');
-	  cancelCustomerOrder(order);
+      // It is too late to produce and deliver this order
+      log.info("canceling to late order " + order.getOrderID()
+           + " (dueDate=" + order.getDueDate()
+           + ",date=" + currentDate + ')');
+      cancelCustomerOrder(order);
 
-	} else if (inventoryQuantity >= orderedQuantity) {
+    } else if (inventoryQuantity >= orderedQuantity) {
 
-	  // There is enough products in the inventory to fulfill this
-	  // order and nothing more should be produced for it. However
-	  // to avoid reusing these products for another order they
-	  // must be reserved.
-	  reserveInventoryForNextDay(productID, orderedQuantity);
+      // There is enough products in the inventory to fulfill this
+      // order and nothing more should be produced for it. However
+      // to avoid reusing these products for another order they
+      // must be reserved.
+      reserveInventoryForNextDay(productID, orderedQuantity);
 
-	} else if (addProductionRequest(productID,
-					orderedQuantity - inventoryQuantity)) {
-	  // The method above will ensure that the needed components
-	  // was available and that the factory had enough free
-	  // capacity. It also removed the needed components from the
-	  // inventory status.
+    } else if (addProductionRequest(productID,
+                    orderedQuantity - inventoryQuantity)) {
+      // The method above will ensure that the needed components
+      // was available and that the factory had enough free
+      // capacity. It also removed the needed components from the
+      // inventory status.
 
-	  // Any existing products have been allocated to this order
-	  // and must be reserved to avoid using them in another
-	  // production or delivery.
-	  reserveInventoryForNextDay(productID, inventoryQuantity);
+      // Any existing products have been allocated to this order
+      // and must be reserved to avoid using them in another
+      // production or delivery.
+      reserveInventoryForNextDay(productID, inventoryQuantity);
 
-	} else {
-	  // Otherwise the production could not be done (lack of
-	  // free factory cycles or not enough components in
-	  // inventory) and nothing can be done for this order at
-	  // this time.
-	}
+    } else {
+      // Otherwise the production could not be done (lack of
+      // free factory cycles or not enough components in
+      // inventory) and nothing can be done for this order at
+      // this time.
+    }
       }
     }
 
@@ -319,9 +366,9 @@ public class WolfAgent extends SCMAgent {
     if (components != null) {
       int quantity = order.getQuantity();
       for (int j = 0, m = components.length; j < m; j++) {
-	componentDemand.addInventory(components[j], -quantity);
+    componentDemand.addInventory(components[j], -quantity);
       }
     }
   }
 
-} // WolfAgent
+} // ExampleAgent
