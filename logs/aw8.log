@@ -1,0 +1,16 @@
+03/04 16:28:26 FINER client.SimClient|creating agent instance of JaimeBot
+03/04 16:28:26 FINE client.ServerConnection|(1) connecting to server localhost at port 6502
+03/04 16:28:26 FINE client.ServerConnection|(1) connected to server localhost
+03/04 16:28:26 FINEST client.ServerConnection|(1) sending Message[jaimemantilla,admin,adminContent[auth,[name=jaimemantilla,password=passw0rd,client.version=0.9.6]]]
+03/04 16:28:26 FINEST client.SimClient|(1) received adminContent[auth,[server.version=0.8.19]]
+03/04 16:28:26 FINER client.ServerConnection|(1) successfully logged in as jaimemantilla
+03/04 16:28:26 FINEST client.ServerConnection|(1) sending Message[jaimemantilla,admin,adminContent[server time,[]]]
+03/04 16:28:26 FINEST client.SimClient|(1) received Message[coordinator,man1,startInfo[1,1396560060000,3300000,15,[customer.daysBeforeVoid=5,factory.address=factory1,factory.capacity=2000,factory.storageCost=50,bank.interestRate=12,bank.depositInterestRate=6,manufacturer.count=6,manufacturer.1=jaimemantilla,manufacturer.2=Dummy,manufacturer.3=Dummy-2,manufacturer.4=Dummy-3,manufacturer.5=Dummy-4,manufacturer.6=Dummy-5]]]
+03/04 16:28:26 FINEST client.ServerConnection|(1) sending Message[jaimemantilla,admin,adminContent[join simulation,[]]]
+03/04 16:28:26 FINEST client.SimClient|(1) received Message[coordinator,man1,activeOrders[[][]]
+03/04 16:28:26 FINE client.SimClient|Entering log for simulation 1
+************************************************************
+* Entering log for simulation 1
+************************************************************
+
+

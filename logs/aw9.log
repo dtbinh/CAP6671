@@ -1,0 +1,18 @@
+03/04 16:24:21 FINER client.SimClient|creating agent instance of JaimeBot
+03/04 16:24:21 FINE client.ServerConnection|(1) connecting to server http://localhost at port 6502
+03/04 16:24:21 SEVERE client.ServerConnection|(1) connection to server failed
+java.net.UnknownHostException: http://localhost
+	at java.net.AbstractPlainSocketImpl.connect(Unknown Source)
+	at java.net.PlainSocketImpl.connect(Unknown Source)
+	at java.net.SocksSocketImpl.connect(Unknown Source)
+	at java.net.Socket.connect(Unknown Source)
+	at java.net.Socket.connect(Unknown Source)
+	at java.net.Socket.<init>(Unknown Source)
+	at java.net.Socket.<init>(Unknown Source)
+	at se.sics.tasim.aw.client.ServerConnection.connect(ServerConnection.java:136)
+	at se.sics.tasim.aw.client.ServerConnection.run(ServerConnection.java:196)
+	at java.lang.Thread.run(Unknown Source)
+03/04 16:24:21 SEVERE client.SimClient|************************************************************
+03/04 16:24:21 SEVERE client.SimClient|* Connection Failed
+03/04 16:24:21 SEVERE client.SimClient|* Could not connect to http://localhost (will retry in 30 seconds)
+03/04 16:24:21 SEVERE client.SimClient|************************************************************

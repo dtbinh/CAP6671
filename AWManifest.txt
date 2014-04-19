@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Sealed: true
+Main-Class: se.sics.tasim.aw.client.Main
+Class-Path: ./
