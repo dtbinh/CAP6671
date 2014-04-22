@@ -1,44 +1,43 @@
-03/04 21:17:15 FINER client.SimClient|creating agent instance of JaimeBot
-03/04 21:17:15 FINE client.ServerConnection|(1) connecting to server localhost at port 6502
-03/04 21:17:15 FINE client.ServerConnection|(1) connected to server localhost
-03/04 21:17:15 FINEST client.ServerConnection|(1) sending Message[jaimemantilla,admin,adminContent[auth,[name=jaimemantilla,password=passw0rd,client.version=0.9.6]]]
-03/04 21:17:15 FINEST client.SimClient|(1) received adminContent[auth,[server.version=0.8.19]]
-03/04 21:17:15 FINER client.ServerConnection|(1) successfully logged in as jaimemantilla
-03/04 21:17:15 FINEST client.ServerConnection|(1) sending Message[jaimemantilla,admin,adminContent[server time,[]]]
-03/04 21:17:15 FINEST client.ServerConnection|(1) sending Message[jaimemantilla,admin,adminContent[join simulation,[]]]
-03/04 21:17:15 FINEST client.SimClient|(1) received adminContent[server time,[time=1396577835584]]
-04/04 02:17:15 FINEST client.SimClient|(1) received adminContent[join simulation,[type=tac06scm,startTime=1396577940000,role=PCManufacturer]]
-04/04 02:17:15 INFO client.SimClient|next simulation starts in 104 seconds
-04/04 02:17:15 INFO client.SimClient|[will reconnect in 1 minutes, 29 seconds]
-04/04 02:17:15 FINEST client.ServerConnection|(1) sending Message[jaimemantilla,admin,adminContent[quit,[]]]
-04/04 02:17:15 FINEST client.ServerConnection|(1) received Message[admin,jaimemantilla,adminContent[quit,[]]]
-04/04 02:17:15 FINE client.ServerConnection|(1) disconnected from server localhost
-04/04 02:18:45 FINE client.ServerConnection|(2) connecting to server localhost at port 6502
-04/04 02:18:45 FINE client.ServerConnection|(2) connected to server localhost
-04/04 02:18:45 FINEST client.ServerConnection|(2) sending Message[jaimemantilla,admin,adminContent[auth,[name=jaimemantilla,password=passw0rd,client.version=0.9.6]]]
-04/04 02:18:45 FINEST client.SimClient|(2) received adminContent[auth,[server.version=0.8.19]]
-04/04 02:18:45 FINER client.ServerConnection|(2) successfully logged in as jaimemantilla
-04/04 02:18:45 FINEST client.ServerConnection|(2) sending Message[jaimemantilla,admin,adminContent[server time,[]]]
-04/04 02:18:45 FINEST client.ServerConnection|(2) sending Message[jaimemantilla,admin,adminContent[join simulation,[]]]
-04/04 02:18:45 FINEST client.SimClient|(2) received adminContent[server time,[time=1396577925015]]
-04/04 02:18:45 FINEST client.SimClient|(2) received adminContent[join simulation,[type=tac06scm,simulation=8,startTime=1396577940000,role=PCManufacturer]]
-04/04 02:18:45 INFO client.SimClient|next simulation 8 starts in 14 seconds
-04/04 02:18:49 FINEST client.ServerConnection|(2) sending Message[jaimemantilla,admin,adminContent[join simulation,[]]]
-04/04 02:18:49 FINEST client.SimClient|(2) received adminContent[join simulation,[type=tac06scm,simulation=8,startTime=1396577940000,role=PCManufacturer]]
-04/04 02:18:49 INFO client.SimClient|next simulation 8 starts in 10 seconds
-04/04 02:19:00 FINEST client.SimClient|(2) received Message[coordinator,man1,startInfo[8,1396577940000,220000,1,[customer.daysBeforeVoid=5,factory.address=factory1,factory.capacity=2000,factory.storageCost=39,bank.interestRate=7,bank.depositInterestRate=3,manufacturer.count=6,manufacturer.1=jaimemantilla,manufacturer.2=Dummy,manufacturer.3=Dummy-2,manufacturer.4=Dummy-3,manufacturer.5=Dummy-4,manufacturer.6=Dummy-5]]]
-04/04 02:19:00 FINE client.SimClient|Entering log for simulation 8
+03/04 21:28:15 FINER client.SimClient|creating agent instance of JaimeBot
+03/04 21:28:15 FINE client.ServerConnection|(1) connecting to server localhost at port 6502
+03/04 21:28:15 FINE client.ServerConnection|(1) connected to server localhost
+03/04 21:28:15 FINEST client.ServerConnection|(1) sending Message[jaimemantilla,admin,adminContent[auth,[name=jaimemantilla,password=passw0rd,client.version=0.9.6]]]
+03/04 21:28:15 FINEST client.SimClient|(1) received adminContent[auth,[server.version=0.8.19]]
+03/04 21:28:15 FINER client.ServerConnection|(1) successfully logged in as jaimemantilla
+03/04 21:28:15 FINEST client.ServerConnection|(1) sending Message[jaimemantilla,admin,adminContent[server time,[]]]
+03/04 21:28:15 FINEST client.ServerConnection|(1) sending Message[jaimemantilla,admin,adminContent[join simulation,[]]]
+03/04 21:28:15 FINEST client.SimClient|(1) received adminContent[server time,[time=1396578495590]]
+04/04 02:28:15 FINEST client.SimClient|(1) received adminContent[join simulation,[type=tac06scm,simulation=10,startTime=1396578540000,role=PCManufacturer]]
+04/04 02:28:15 INFO client.SimClient|next simulation 10 starts in 44 seconds
+04/04 02:29:00 FINEST client.SimClient|(1) received Message[coordinator,man1,startInfo[10,1396578540000,220000,1,[customer.daysBeforeVoid=5,factory.address=factory1,factory.capacity=2000,factory.storageCost=34,bank.interestRate=11,bank.depositInterestRate=5,manufacturer.count=6,manufacturer.1=jaimemantilla,manufacturer.2=Dummy,manufacturer.3=Dummy-2,manufacturer.4=Dummy-3,manufacturer.5=Dummy-4,manufacturer.6=Dummy-5]]]
+04/04 02:29:00 FINE client.SimClient|Entering log for simulation 10
 ************************************************************
-* Entering log for simulation 8
+* Entering log for simulation 10
 ************************************************************
 
 
-04/04 02:22:40 FINEST client.ServerConnection|(2) sending Message[man1,factory1,productionSchedule[[8,1][7,14][15,14][13,8][4,16][12,20][14,20][5,17][13,11][10,19][11,17][10,9][9,14][1,17][1,13][6,19][7,6][7,5][8,3][10,14][10,16][2,9][10,19][16,3][7,19][6,17][8,14][6,3][6,5][14,5]]]
-04/04 02:22:40 FINEST client.ServerConnection|(2) sending Message[jaimemantilla,admin,adminContent[join simulation,[]]]
-04/04 02:22:40 FINEST client.SimClient|(2) received adminContent[join simulation,[type=tac06scm,startTime=1396578240000,role=PCManufacturer]]
-04/04 02:22:40 FINER client.SimClient|creating agent instance of JaimeBot
-04/04 02:22:40 INFO client.SimClient|next simulation starts in 79 seconds
-04/04 02:22:40 INFO client.SimClient|[will reconnect in 1 minutes, 4 seconds]
-04/04 02:22:40 FINEST client.ServerConnection|(2) sending Message[jaimemantilla,admin,adminContent[quit,[]]]
-04/04 02:22:40 FINEST client.ServerConnection|(2) received Message[admin,jaimemantilla,adminContent[quit,[]]]
-04/04 02:22:40 FINE client.ServerConnection|(2) disconnected from server localhost
+04/04 02:32:40 FINEST client.ServerConnection|(1) sending Message[jaimemantilla,admin,adminContent[join simulation,[]]]
+04/04 02:32:40 FINEST client.SimClient|(1) received adminContent[join simulation,[type=tac06scm,startTime=1396578840000,role=PCManufacturer]]
+04/04 02:32:40 FINER client.SimClient|creating agent instance of JaimeBot
+04/04 02:32:40 INFO client.SimClient|next simulation starts in 79 seconds
+04/04 02:32:40 INFO client.SimClient|[will reconnect in 1 minutes, 4 seconds]
+04/04 02:32:40 FINEST client.ServerConnection|(1) sending Message[jaimemantilla,admin,adminContent[quit,[]]]
+04/04 02:32:40 FINEST client.ServerConnection|(1) received Message[admin,jaimemantilla,adminContent[quit,[]]]
+04/04 02:32:40 FINE client.ServerConnection|(1) disconnected from server localhost
+04/04 02:33:45 FINE client.ServerConnection|(2) connecting to server localhost at port 6502
+04/04 02:33:45 FINE client.ServerConnection|(2) connected to server localhost
+04/04 02:33:45 FINEST client.ServerConnection|(2) sending Message[jaimemantilla,admin,adminContent[auth,[name=jaimemantilla,password=passw0rd,client.version=0.9.6]]]
+04/04 02:33:45 FINEST client.SimClient|(2) received adminContent[auth,[server.version=0.8.19]]
+04/04 02:33:45 FINER client.ServerConnection|(2) successfully logged in as jaimemantilla
+04/04 02:33:45 FINEST client.ServerConnection|(2) sending Message[jaimemantilla,admin,adminContent[server time,[]]]
+04/04 02:33:45 FINEST client.ServerConnection|(2) sending Message[jaimemantilla,admin,adminContent[join simulation,[]]]
+04/04 02:33:45 FINEST client.SimClient|(2) received adminContent[server time,[time=1396578825019]]
+04/04 02:33:45 FINEST client.SimClient|(2) received adminContent[join simulation,[type=tac06scm,simulation=11,startTime=1396578840000,role=PCManufacturer]]
+04/04 02:33:45 INFO client.SimClient|next simulation 11 starts in 14 seconds
+04/04 02:34:00 FINEST client.SimClient|(2) received Message[coordinator,man1,startInfo[11,1396578840000,220000,1,[customer.daysBeforeVoid=5,factory.address=factory1,factory.capacity=2000,factory.storageCost=32,bank.interestRate=8,bank.depositInterestRate=4,manufacturer.count=6,manufacturer.1=jaimemantilla,manufacturer.2=Dummy,manufacturer.3=Dummy-2,manufacturer.4=Dummy-3,manufacturer.5=Dummy-4,manufacturer.6=Dummy-5]]]
+04/04 02:34:00 FINE client.SimClient|Entering log for simulation 11
+************************************************************
+* Entering log for simulation 11
+************************************************************
+
+

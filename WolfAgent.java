@@ -88,7 +88,7 @@ import se.sics.tasim.tac03.aw.SCMAgent;
 public class WolfAgent extends SCMAgent {
 
   private static final Logger log =
-    Logger.getLogger(ExampleAgent.class.getName());
+    Logger.getLogger(WolfAgent.class.getName());
 
   private Random random = new Random();
 
@@ -123,6 +123,7 @@ public class WolfAgent extends SCMAgent {
   }
 
   /**
+   * STEP 1:
    * Called when a bundle of RFQs have been received from the
    * customers. In TAC03 SCM the customers only send one bundle per
    * day and the same RFQs are sent to all manufacturers.
@@ -153,15 +154,18 @@ public class WolfAgent extends SCMAgent {
   }
 
   /**
+   * STEP 2:
    * Create a price for the order that is profitable and will be accepted
    * Anything higher than the reserve price will not be accepted
    * @param reservePrice the maximum price a customer will pay
    */
   protected int createCustomerOfferPrice(int reservePrice){
+    // TODO: Change to a non-random method, based on past customer acceptances
     return (int)(reservePrice * (1.0 - random.nextDouble() * priceDiscountFactor));
   }
 
   /**
+   * STEP 3:
    * Called when a bundle of orders have been received from the
    * customers. In TAC03 SCM the customers only send one order bundle
    * per day as response to offers (and only if they want to order
@@ -193,6 +197,7 @@ public class WolfAgent extends SCMAgent {
   }
 
   /**
+   * STEP 4:
    * Handles the creation of RFQs to suppliers
    */
   protected void handleSupplierOrders(){
@@ -206,8 +211,7 @@ public class WolfAgent extends SCMAgent {
         int productID = componentDemand.getProductID(i);
         String[] suppliers = catalog.getSuppliersForProduct(productID);
         if(suppliers != null){
-          // TODO: Change this to non-random
-          int supIndex = random.nextInt(suppliers.length);
+          int supIndex = calculateBestSupplier(suppliers);
           // TODO: Create a method to calculate reserve price for suppliers
           int reservePrice = calculateSupplyReservePrice();
           addSupplierRFQ(suppliers[supIndex], productID, quantity,
@@ -223,6 +227,15 @@ public class WolfAgent extends SCMAgent {
     }
   }
 
+  // STEP 5:
+  // Chooses the best supplier for a given component
+  protected int calculateBestSupplier(String[] suppliers){
+    //TODO: replace this method with a non-random supplier based on
+    // past history
+    return random.nextInt(suppliers.length);
+  }
+
+  // STEP 6:
   // Calculate a price to order components at while still being profitable
   // TODO: Currently unbounded at 0
   protected int calculateSupplyReservePrice(){
@@ -230,6 +243,7 @@ public class WolfAgent extends SCMAgent {
   }
 
   /**
+   * STEP 7:
    * Called when a bundle of offers have been received from a
    * supplier. In TAC03 SCM suppliers only send one offer bundle per
    * day in reply to RFQs (and only if they had something to offer).
@@ -281,6 +295,7 @@ public class WolfAgent extends SCMAgent {
   }
 
   /**
+   * STEP 8:
    * Called when a simulation status has been received and that all
    * messages from the server this day have been received. The next
    * message will be for the next day.
@@ -371,4 +386,4 @@ public class WolfAgent extends SCMAgent {
     }
   }
 
-} // ExampleAgent
+} //WolfAgent
