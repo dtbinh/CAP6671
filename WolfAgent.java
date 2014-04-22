@@ -27,6 +27,7 @@
 
 import java.util.Random;
 import java.util.logging.Logger;
+import java.util.ArrayList;
 
 import se.sics.tasim.props.BOMBundle;
 import se.sics.tasim.props.ComponentCatalog;
@@ -164,6 +165,13 @@ public class WolfAgent extends SCMAgent {
     return (int)(reservePrice * (1.0 - random.nextDouble() * priceDiscountFactor));
   }
 
+  // Calculate the average price discount on a discount factor that is still
+  // profitable
+  // TODO: Update price discount factor based on past and arrange into buckets
+  protected double calculatePriceDiscountFactor(){
+    return priceDiscountFactor;
+  }
+
   /**
    * STEP 3:
    * Called when a bundle of orders have been received from the
@@ -193,6 +201,7 @@ public class WolfAgent extends SCMAgent {
     // Create the orders to supplier
     handleSupplierOrders();
 
+    // Base SCMAgent method
     sendSupplierRFQs();
   }
 
