@@ -90,58 +90,66 @@ import se.sics.tasim.tac03.aw.SCMAgent;
  */
 public class WolfAgent extends SCMAgent {
 
-  private static final Logger log =
+    private static final Logger log =
     Logger.getLogger(WolfAgent.class.getName());
 
-  private Random random = new Random();
+    private Random random = new Random();
 
-  /** Latest possible due date when bidding for customer orders */
-  private int lastBidDueDate;
+    /** Latest possible due date when bidding for customer orders */
+    private int lastBidDueDate;
 
-  // Store a hashtable with productID and quantity demanded
-  private HashMap<Integer, Integer> rfqHash;
+    // Store a hashtable with productID and quantity demanded
+    private HashMap<Integer, Integer> rfqHash;
 
-  // Store a hashtable with the productID and the price discount offered
-  private HashMap<Integer, Float> priceHash;
+    // Store a hashtable with the productID and the price discount offered
+    private HashMap<Integer, Float> priceHash;
 
-  /** Offer price discount factor when bidding for customer orders */
-  private float priceDiscountFactor = 0.2f;
+    // Price requested from supplier
+    private HashMap<String, Integer> supplierPriceHash;
+    private HashMap<String, Float> supplierPriceDiscountHash;
+    private HashMap<String, Integer> supplierValueHash;
+    // RFQ ID, Quantity
+    private HashMap<Integer, Integer> supplierRFQQuantityHash;
 
-  /** Array list of price discounts that result in a successful bid */
-  private ArrayList<Float> successfulBidDiscounts = new ArrayList<Float>();
 
-  /** Bookkeeper for component demand for accepted customer orders */
-  private InventoryStatus componentDemand = new InventoryStatus();
+    /** Offer price discount factor when bidding for customer orders */
+    private float priceDiscountFactor = 0.2f;
 
-  public WolfAgent() {
-  }
+    /** Array list of price discounts that result in a successful bid */
+    private ArrayList<Float> successfulBidDiscounts = new ArrayList<Float>();
 
-  /**
-   * Called when the agent received all startup information and it is
-   * time to start participating in the simulation.
-   */
-  protected void simulationStarted() {
-    StartInfo info = getStartInfo();
-    // Calculate the latest possible due date that can be produced for
-    // and delivered in this game/simulation
-    this.lastBidDueDate = info.getNumberOfDays() - 2;
-  }
+    /** Bookkeeper for component demand for accepted customer orders */
+    private InventoryStatus componentDemand = new InventoryStatus();
 
-  /**
-   * Called when a game/simulation has ended and the agent should
-   * free its resources.
-   */
-  protected void simulationEnded() {
-  }
+    public WolfAgent() {
+    }
 
-  /**
-   * STEP 1:
-   * Called when a bundle of RFQs have been received from the
-   * customers. In TAC03 SCM the customers only send one bundle per
-   * day and the same RFQs are sent to all manufacturers.
-   *
-   * @param rfqBundle a bundle of RFQs
-   */
+    /**
+    * Called when the agent received all startup information and it is
+    * time to start participating in the simulation.
+    */
+    protected void simulationStarted() {
+        StartInfo info = getStartInfo();
+        // Calculate the latest possible due date that can be produced for
+        // and delivered in this game/simulation
+        this.lastBidDueDate = info.getNumberOfDays() - 2;
+    }
+
+    /**
+    * Called when a game/simulation has ended and the agent should
+    * free its resources.
+    */
+    protected void simulationEnded() {
+    }
+
+    /**
+    * STEP 1:
+    * Called when a bundle of RFQs have been received from the
+    * customers. In TAC03 SCM the customers only send one bundle per
+    * day and the same RFQs are sent to all manufacturers.
+    *
+    * @param rfqBundle a bundle of RFQs
+    */
     protected void handleCustomerRFQs(RFQBundle rfqBundle) {
         int currentDate = getCurrentDate();
         this.rfqHash = new HashMap<Integer, Integer>();
@@ -178,8 +186,6 @@ public class WolfAgent extends SCMAgent {
               }
             }
         }
-
-
         // Finished adding offers. Send all offers to the customers.
         sendCustomerOffers();
     }
@@ -188,6 +194,7 @@ public class WolfAgent extends SCMAgent {
     * STEP 2:
     * Create a price for the order that is profitable and will be accepted
     * Anything higher than the reserve price will not be accepted
+    * Helper method for handleCustomerRFQS
     * @param reservePrice the maximum price a customer will pay
     */
     protected int createCustomerOfferPrice(int id, int reservePrice){
@@ -199,7 +206,6 @@ public class WolfAgent extends SCMAgent {
         // Allows us to compare rfqHash to priceHash to see if bid was
         // successful
         this.priceHash.put(id, priceDiscountFloat);
-        // TODO: Change to a non-random method
         // Use random bids for first 50 days of simulation
         if(this.getCurrentDate() < 50){
             return (int)(reservePrice * priceDiscountFloat);
@@ -208,15 +214,18 @@ public class WolfAgent extends SCMAgent {
         else{
             return (int)(reservePrice * calculateAverageWinningBid());
         }
-
     }
 
+    // Calculates the average price discount stored in the
+    // successfulBidDiscounts Array List
+    // Helper Method for createCustomerOfferPrice
     protected float calculateAverageWinningBid(){
         float average = 0.0f;
         for(int i = 0; i < successfulBidDiscounts.size(); i++){
             average += successfulBidDiscounts.get(i);
         }
-
+        //TODO: could tweak this to get closer to floor of winning bids
+        // rather than the average
         return average / successfulBidDiscounts.size();
     }
 
@@ -266,7 +275,7 @@ public class WolfAgent extends SCMAgent {
             }
         }
         // Agent creates the orders to supplier
-        this.handleSupplierOrders();
+        this.handleSupplierRFQs();
 
         // Agent sends the RFQ's to suppliers
         this.sendSupplierRFQs();
@@ -276,46 +285,78 @@ public class WolfAgent extends SCMAgent {
    * STEP 4:
    * Handles the creation of RFQs to suppliers
    */
-  protected void handleSupplierOrders(){
-    ComponentCatalog catalog = getComponentCatalog();
-    int currentDate = getCurrentDate();
+    protected void handleSupplierRFQs(){
+        ComponentCatalog catalog = getComponentCatalog();
+        int currentDate = getCurrentDate();
 
-    for(int i = 0, n = componentDemand.getProductCount(); i<n;i++){
-      // Get the quantity demanded of a particular component
-      int quantity = componentDemand.getQuantity(i);
-      if(quantity > 0){
-        int productID = componentDemand.getProductID(i);
-        String[] suppliers = catalog.getSuppliersForProduct(productID);
-        if(suppliers != null){
-          int supIndex = calculateBestSupplier(suppliers);
-          // TODO: Create a method to calculate reserve price for suppliers
-          int reservePrice = calculateSupplierReservePrice();
-          addSupplierRFQ(suppliers[supIndex], productID, quantity,
-           reservePrice, currentDate+2);
+        supplierRFQQuantityHash = new HashMap<Integer, Integer>();
 
-          // Assume that the supplier will be able to dliver the components
-          componentDemand.addInventory(productID, -quantity);
+        for(int i = 0, n = componentDemand.getProductCount(); i<n;i++){
+            // Get the quantity demanded of a particular component
+            int quantity = componentDemand.getQuantity(i);
+            if(quantity > 0){
+                int productID = componentDemand.getProductID(i);
+                String[] suppliers = catalog.getSuppliersForProduct(productID);
+                if(suppliers != null){
+                    int supIndex = calculateBestSupplier(suppliers);
+                    // TODO: Calculate best reserve
+                    int reservePrice = calculateSupplierReservePrice();
+                    int rfqID =
+                    addSupplierRFQ(suppliers[supIndex], productID, quantity,
+                    reservePrice, currentDate+2);
+
+                    // Add the RFQ to the hashmap so we can check the quanity
+                    // in the offer phase
+                    supplierRFQQuantityHash.put(rfqID, quantity);
+
+                    // Assume supplier can deliver components
+                    componentDemand.addInventory(productID, -quantity);
+                }
+                else{
+                    log.severe("No suppliers for product " + productID);
+                }
+            }
         }
-        else{
-          log.severe("No suppliers for product " + productID);
-        }
-      }
     }
-  }
 
-  // STEP 5:
-  // Chooses the best supplier for a given component
-  protected int calculateBestSupplier(String[] suppliers){
-    //TODO: replace this method with a non-random supplier based on
-    // past history
-    return random.nextInt(suppliers.length);
-  }
+    // STEP 5:
+    // Chooses the best supplier for a given component
+    protected int calculateBestSupplier(String[] suppliers){
+        // If we have sufficient history, look at the hashtable of supplier
+        // value to decide the best supplier to go with
+        if(this.getCurrentDate() > 50){
+            int tempSupplierValue = 0;
+            int tempSupplier = 0;
+            int tempValue = 0;
+            for(int i=0; i<suppliers.length-1; i++){
+                // Lookup the value of the supplier in the hash table
+                tempSupplierValue = supplierValueHash.get(suppliers[i]);
+                // If the value is greater, choose that supplier
+                if(tempSupplierValue > tempValue){
+                    tempValue = tempSupplierValue;
+                    tempSupplier = i;
+                }
+            }
+            return tempSupplier;
+        }
+        //Randomly select a supplier while building a history of supplier value
+        else{
+            return random.nextInt(suppliers.length);
+        }
+    }
 
   // STEP 6:
   // Calculate a price to order components at while still being profitable
   // TODO: Currently unbounded at 0
   protected int calculateSupplierReservePrice(){
-    return 0;
+    if(this.getCurrentDate() > 50){
+        //TODO: calculate a reserve price to request for that product
+        //TODO: use the price report to calculate a good price
+        return 0;
+    }
+    else{
+        return 0;
+    }
   }
 
   /**
@@ -329,123 +370,113 @@ public class WolfAgent extends SCMAgent {
    */
   protected void handleSupplierOffers(String supplierAddress,
                       OfferBundle offers) {
+    // initialize min price to the last element in the array list
+        int minPrice = offers.getUnitPrice(offers.size() -1);
+        int minIndex = offers.size() -1;
+
     // Earliest complete is always after partial offers so the offer
     // bundle is traversed backwards to always accept earliest offer
     // instead of the partial (the server will ignore the second
     // order for the same offer).
+    // Here traverse forward until an offer is found of the correct quantity
+    // and cheapest
+    for (int i = 0;i < offers.size() - 1; i++) {
+        // Initialize the RFQ id
+        int rfqID = offers.getRFQID(i);
 
-    // Set cheapest offer to last index
-    int cheapestOfferIndex = offers.size()-1;
-    // Initialize the beginning price to the last price in the array
-    int currentUnitPrice = offers.getUnitPrice(offers.size() -1);
-
-    // The ratio over the cheapest price we are willing to spend.
-    double supplierPriceTolerance = 1.1;
-
-    // TODO: set correctQuantity quantity in RFQID of offers.getRFQID(i)
-    int correctQuantity = 0;
-    int bestOffer = offers.size() -1;
-    // Loop through the offers and determine the cheapest offer
-    for (int i = offers.size() - 1; i >= 0; i--) {
-      // Only order if quantity > 0 (otherwise it is only a price quote)
-
-      if(offers.getUnitPrice(i) < currentUnitPrice){
-        currentUnitPrice = offers.getUnitPrice(i);
-        cheapestOfferIndex = i;
-      }
-    }
-    // Loop through the offers, if an offer has the correct quantity and
-    // is within our price tolerance of the cheapest price, set it as the best
-    // offer.
-    for (int i = offers.size() -1; i>=0; i--){
-
-      if (offers.getQuantity(i) > 0 && offers.getQuantity(i) >= correctQuantity){
-        if(offers.getUnitPrice(i) <= cheapestOfferIndex*supplierPriceTolerance){
-          bestOffer = i;
+        // If the offer quantity matches the quantity requested
+        // i.e don't accept partial offers
+        if(offers.getQuantity(i) >= supplierRFQQuantityHash.get(rfqID)){
+            if(offers.getUnitPrice(i) <= minPrice){
+                minPrice = offers.getUnitPrice(i);
+                minIndex = i;
+            }
         }
-      }
     }
-
-    addSupplierOrder(supplierAddress, offers, bestOffer);
+    if(offers.getQuantity(minIndex) > 0){
+        // Order the cheapest and most quickly produced offer.
+        addSupplierOrder(supplierAddress, offers, minIndex);
+        // Add the supplier to the supplier value hashMap?
+    }
     sendSupplierOrders();
   }
 
-  /**
-   * STEP 8:
-   * Called when a simulation status has been received and that all
-   * messages from the server this day have been received. The next
-   * message will be for the next day.
-   *
-   * @param status a simulation status
-   */
-  protected synchronized void handleSimulationStatus(SimulationStatus status) {
+    /**
+    * STEP 8:
+    * Called when a simulation status has been received and that all
+    * messages from the server this day have been received. The next
+    * message will be for the next day.
+    *
+    * @param status a simulation status
+    */
+        protected synchronized void handleSimulationStatus(SimulationStatus status) {
 
-    // The inventory for next day is calculated with todays deliveries
-    // and production and is changed when production and delivery
-    // requests are made.
-    InventoryStatus inventory = getInventoryForNextDay();
+        // The inventory for next day is calculated with todays deliveries
+        // and production and is changed when production and delivery
+        // requests are made.
+        InventoryStatus inventory = getInventoryForNextDay();
 
-    // Generate production and delivery schedules
-    int currentDate = getCurrentDate();
-    int latestDueDate = currentDate - getDaysBeforeVoid() + 2;
+        // Generate production and delivery schedules
+        int currentDate = getCurrentDate();
+        int latestDueDate = currentDate - getDaysBeforeVoid() + 2;
 
-    OrderStore customerOrders = getCustomerOrders();
-    Order[] orders = customerOrders.getActiveOrders();
-    if (orders != null) {
-      for (int i = 0, n = orders.length; i < n; i++) {
-    Order order = orders[i];
-    int productID = order.getProductID();
-    int dueDate = order.getDueDate();
-    int orderedQuantity = order.getQuantity();
-    int inventoryQuantity = inventory.getInventoryQuantity(productID);
+        OrderStore customerOrders = getCustomerOrders();
+        Order[] orders = customerOrders.getActiveOrders();
+        if (orders != null) {
+          for (int i = 0, n = orders.length; i < n; i++) {
+        Order order = orders[i];
+        int productID = order.getProductID();
+        int dueDate = order.getDueDate();
+        int orderedQuantity = order.getQuantity();
+        int inventoryQuantity = inventory.getInventoryQuantity(productID);
 
-    if ((currentDate >= (dueDate - 1)) && (dueDate >= latestDueDate)
-        && addDeliveryRequest(order)) {
-      // It was time to deliver this order and it could be
-      // delivered (the method above ensures this). The order has
-      // automatically been marked as delivered and the products
-      // have been removed from the inventory status (to avoid
-      // delivering the same products again).
+        if ((currentDate >= (dueDate - 1)) && (dueDate >= latestDueDate)
+            && addDeliveryRequest(order)) {
+          // It was time to deliver this order and it could be
+          // delivered (the method above ensures this). The order has
+          // automatically been marked as delivered and the products
+          // have been removed from the inventory status (to avoid
+          // delivering the same products again).
 
-    } else if (dueDate <= latestDueDate) {
+        } else if (dueDate <= latestDueDate) {
 
-      // It is too late to produce and deliver this order
-      log.info("canceling to late order " + order.getOrderID()
-           + " (dueDate=" + order.getDueDate()
-           + ",date=" + currentDate + ')');
-      cancelCustomerOrder(order);
+          // It is too late to produce and deliver this order
+          log.info("canceling to late order " + order.getOrderID()
+               + " (dueDate=" + order.getDueDate()
+               + ",date=" + currentDate + ')');
+          cancelCustomerOrder(order);
 
-    } else if (inventoryQuantity >= orderedQuantity) {
+        } else if (inventoryQuantity >= orderedQuantity) {
 
-      // There is enough products in the inventory to fulfill this
-      // order and nothing more should be produced for it. However
-      // to avoid reusing these products for another order they
-      // must be reserved.
-      reserveInventoryForNextDay(productID, orderedQuantity);
+          // There is enough products in the inventory to fulfill this
+          // order and nothing more should be produced for it. However
+          // to avoid reusing these products for another order they
+          // must be reserved.
+          reserveInventoryForNextDay(productID, orderedQuantity);
 
-    } else if (addProductionRequest(productID,
-                    orderedQuantity - inventoryQuantity)) {
-      // The method above will ensure that the needed components
-      // was available and that the factory had enough free
-      // capacity. It also removed the needed components from the
-      // inventory status.
+        } else if (addProductionRequest(productID,
+                        orderedQuantity - inventoryQuantity)) {
+          // The method above will ensure that the needed components
+          // was available and that the factory had enough free
+          // capacity. It also removed the needed components from the
+          // inventory status.
 
-      // Any existing products have been allocated to this order
-      // and must be reserved to avoid using them in another
-      // production or delivery.
-      reserveInventoryForNextDay(productID, inventoryQuantity);
+          // Any existing products have been allocated to this order
+          // and must be reserved to avoid using them in another
+          // production or delivery.
+          reserveInventoryForNextDay(productID, inventoryQuantity);
 
-    } else {
-      // Otherwise the production could not be done (lack of
-      // free factory cycles or not enough components in
-      // inventory) and nothing can be done for this order at
-      // this time.
+        } else {
+          // Otherwise the production could not be done (lack of
+          // free factory cycles or not enough components in
+          // inventory) and nothing can be done for this order at
+          // this time.
+        }
+          }
+        }
+
+        sendFactorySchedules();
     }
-      }
-    }
-
-    sendFactorySchedules();
-  }
 
   private void cancelCustomerOrder(Order order) {
     order.setCanceled();
