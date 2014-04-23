@@ -27,11 +27,12 @@
 
 import java.util.Random;
 import java.util.logging.Logger;
-import java.util.ArrayList;
+import java.util.HashMap;
 
 import se.sics.tasim.props.BOMBundle;
 import se.sics.tasim.props.ComponentCatalog;
 import se.sics.tasim.props.InventoryStatus;
+import se.sics.tasim.props.FactoryStatus;
 import se.sics.tasim.props.OfferBundle;
 import se.sics.tasim.props.OrderBundle;
 import se.sics.tasim.props.RFQBundle;
@@ -96,6 +97,12 @@ public class WolfAgent extends SCMAgent {
   /** Latest possible due date when bidding for customer orders */
   private int lastBidDueDate;
 
+  // Store a hashtable with productID and quantity demanded
+  private HashMap<Integer, Integer> rfqHash;
+
+  // Store a hashtable with the productID and the price discount offered
+  private HashMap<Integer, Integer> priceHash;
+
   /** Offer price discount factor when bidding for customer orders */
   private double priceDiscountFactor = 0.2;
 
@@ -131,39 +138,62 @@ public class WolfAgent extends SCMAgent {
    *
    * @param rfqBundle a bundle of RFQs
    */
-  protected void handleCustomerRFQs(RFQBundle rfqBundle) {
-    int currentDate = getCurrentDate();
-    for (int i = 0, n = rfqBundle.size(); i < n; i++) {
-      int dueDate = rfqBundle.getDueDate(i);
-      // Only bid for quotes to which we have time to produce PCs and
-      // where the delivery time is not beyond the end of the game.
-      // See the comments in the beginning of this file.
-      if ((dueDate - currentDate) >= 6 && (dueDate <= lastBidDueDate)) {
-       // The maximal price the sender of the request is willing to pay
-       // per unit in the order
-       int resPrice = rfqBundle.getReservePricePerUnit(i);
+    protected void handleCustomerRFQs(RFQBundle rfqBundle) {
+        int currentDate = getCurrentDate();
+        this.rfqHash = new HashMap<Integer, Integer>();
+        this.priceHash = new HashMap<Integer, Integer>();
 
-       // Find a price to offer to the customer
-       int offeredPrice = createCustomerOfferPrice(resPrice);
-       // Adds an offer to be sent to the customers in response to a RFQ
-       addCustomerOffer(rfqBundle, i, offeredPrice);
-      }
+        FactoryStatus factoryStatus = new FactoryStatus(componentDemand);
+        // If the factory utilization is too high, don't accept new offers
+        if(factoryStatus.getUtilization() > 0.9){
+            // TODO: check if orders can be filled using exisiting inventory
+        }
+        else{
+            for (int i = 0, n = rfqBundle.size(); i < n; i++) {
+              int dueDate = rfqBundle.getDueDate(i);
+              // Only bid for quotes to which we have time to produce PCs and
+              // where the delivery time is not beyond the end of the game.
+              if((dueDate - currentDate) >= 6 && (dueDate <= lastBidDueDate))
+              {
+
+               // The maximal price the sender of the request is willing to pay
+               // per unit in the order
+               int resPrice = rfqBundle.getReservePricePerUnit(i);
+
+               // This stores the quantity and the ID for each product demanded
+               // Allows us to compare if the product requested received a
+               // winning bid
+               int tempID = rfqBundle.getProductID(i);
+               int tempQuantity = rfqBundle.getQuantity(i);
+               rfqHash.put(tempID, tempQuantity);
+
+               // Find a price to offer to the customer
+               int offeredPrice = createCustomerOfferPrice(resPrice);
+               // Allows us to compare rfqHash to priceHash to see if bid was
+               // successful
+               priceHash.put(tempID, offeredPrice);
+               // Adds an offer to the customers in response to a RFQ
+               addCustomerOffer(rfqBundle, i, offeredPrice);
+              }
+            }
+        }
+
+
+        // Finished adding offers. Send all offers to the customers.
+        sendCustomerOffers();
     }
 
-    // Finished adding offers. Send all offers to the customers.
-    sendCustomerOffers();
-  }
-
-  /**
-   * STEP 2:
-   * Create a price for the order that is profitable and will be accepted
-   * Anything higher than the reserve price will not be accepted
-   * @param reservePrice the maximum price a customer will pay
-   */
-  protected int createCustomerOfferPrice(int reservePrice){
-    // TODO: Change to a non-random method, based on past customer acceptances
-    return (int)(reservePrice * (1.0 - random.nextDouble() * priceDiscountFactor));
-  }
+    /**
+    * STEP 2:
+    * Create a price for the order that is profitable and will be accepted
+    * Anything higher than the reserve price will not be accepted
+    * @param reservePrice the maximum price a customer will pay
+    */
+    protected int createCustomerOfferPrice(int reservePrice){
+        // TODO: Change to a non-random method, based on past customer acceptances
+        // return (int) (reservePrice * calculatePriceDiscountFactor());
+        return (int)(reservePrice * (1.0 - random.nextDouble() * priceDiscountFactor));
+    }
 
   // Calculate the average price discount on a discount factor that is still
   // profitable
@@ -181,29 +211,36 @@ public class WolfAgent extends SCMAgent {
    *
    * @param newOrders the new customer orders
    */
-  protected void handleCustomerOrders(Order[] newOrders) {
-    // Add the component demand for the new customer orders
-    BOMBundle bomBundle = getBOMBundle();
-    for (int i = 0, n = newOrders.length; i < n; i++) {
-      Order order = newOrders[i];
-      int productID = order.getProductID();
-      int quantity = order.getQuantity();
-      // Get the components required to produce the product
-      int[] components = bomBundle.getComponentsForProductID(productID);
-      if (components != null) {
-        for (int j = 0, m = components.length; j < m; j++) {
-          // Add the required components to the demanded array
-          componentDemand.addInventory(components[j], quantity);
+    protected void handleCustomerOrders(Order[] newOrders) {
+        // Add the component demand for the new customer orders
+        BOMBundle bomBundle = getBOMBundle();
+        // Initialize an order from the order Array, ID and quantity
+        // Save space from initializing every loop
+        Order order;
+        int productID = 0;
+        int quantity = 0;
+
+        for (int i = 0, n = newOrders.length; i < n; i++) {
+            order = newOrders[i];
+            productID = order.getProductID();
+            quantity = order.getQuantity();
+            // Get the components required to produce the product
+            int[] components = bomBundle.getComponentsForProductID(productID);
+            if (components != null) {
+                for (int j = 0, m = components.length; j < m; j++) {
+                    // Add the required components to the inventory
+                    // This assumes the can be supplied
+                    // TODO: Update inventory with the actual quantity supplied
+                    componentDemand.addInventory(components[j], quantity);
+                }
+            }
         }
-      }
+        // Agent creates the orders to supplier
+        this.handleSupplierOrders();
+
+        // Agent sends the RFQ's to suppliers
+        this.sendSupplierRFQs();
     }
-
-    // Create the orders to supplier
-    handleSupplierOrders();
-
-    // Base SCMAgent method
-    sendSupplierRFQs();
-  }
 
   /**
    * STEP 4:
@@ -222,7 +259,7 @@ public class WolfAgent extends SCMAgent {
         if(suppliers != null){
           int supIndex = calculateBestSupplier(suppliers);
           // TODO: Create a method to calculate reserve price for suppliers
-          int reservePrice = calculateSupplyReservePrice();
+          int reservePrice = calculateSupplierReservePrice();
           addSupplierRFQ(suppliers[supIndex], productID, quantity,
            reservePrice, currentDate+2);
 
@@ -247,7 +284,7 @@ public class WolfAgent extends SCMAgent {
   // STEP 6:
   // Calculate a price to order components at while still being profitable
   // TODO: Currently unbounded at 0
-  protected int calculateSupplyReservePrice(){
+  protected int calculateSupplierReservePrice(){
     return 0;
   }
 
