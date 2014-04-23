@@ -28,6 +28,7 @@
 import java.util.Random;
 import java.util.logging.Logger;
 import java.util.HashMap;
+import java.util.ArrayList;
 
 import se.sics.tasim.props.BOMBundle;
 import se.sics.tasim.props.ComponentCatalog;
@@ -101,10 +102,13 @@ public class WolfAgent extends SCMAgent {
   private HashMap<Integer, Integer> rfqHash;
 
   // Store a hashtable with the productID and the price discount offered
-  private HashMap<Integer, Integer> priceHash;
+  private HashMap<Integer, Float> priceHash;
 
   /** Offer price discount factor when bidding for customer orders */
-  private double priceDiscountFactor = 0.2;
+  private float priceDiscountFactor = 0.2f;
+
+  /** Array list of price discounts that result in a successful bid */
+  private ArrayList<Float> successfulBidDiscounts = new ArrayList<Float>();
 
   /** Bookkeeper for component demand for accepted customer orders */
   private InventoryStatus componentDemand = new InventoryStatus();
@@ -141,7 +145,6 @@ public class WolfAgent extends SCMAgent {
     protected void handleCustomerRFQs(RFQBundle rfqBundle) {
         int currentDate = getCurrentDate();
         this.rfqHash = new HashMap<Integer, Integer>();
-        this.priceHash = new HashMap<Integer, Integer>();
 
         FactoryStatus factoryStatus = new FactoryStatus(componentDemand);
         // If the factory utilization is too high, don't accept new offers
@@ -168,10 +171,8 @@ public class WolfAgent extends SCMAgent {
                rfqHash.put(tempID, tempQuantity);
 
                // Find a price to offer to the customer
-               int offeredPrice = createCustomerOfferPrice(resPrice);
-               // Allows us to compare rfqHash to priceHash to see if bid was
-               // successful
-               priceHash.put(tempID, offeredPrice);
+               int offeredPrice = createCustomerOfferPrice(tempID, resPrice);
+
                // Adds an offer to the customers in response to a RFQ
                addCustomerOffer(rfqBundle, i, offeredPrice);
               }
@@ -189,18 +190,35 @@ public class WolfAgent extends SCMAgent {
     * Anything higher than the reserve price will not be accepted
     * @param reservePrice the maximum price a customer will pay
     */
-    protected int createCustomerOfferPrice(int reservePrice){
-        // TODO: Change to a non-random method, based on past customer acceptances
-        // return (int) (reservePrice * calculatePriceDiscountFactor());
-        return (int)(reservePrice * (1.0 - random.nextDouble() * priceDiscountFactor));
+    protected int createCustomerOfferPrice(int id, int reservePrice){
+        this.priceHash = new HashMap<Integer, Float>();
+
+        float priceDiscountFloat =
+        (1.0f - random.nextFloat() * priceDiscountFactor);
+
+        // Allows us to compare rfqHash to priceHash to see if bid was
+        // successful
+        this.priceHash.put(id, priceDiscountFloat);
+        // TODO: Change to a non-random method
+        // Use random bids for first 50 days of simulation
+        if(this.getCurrentDate() < 50){
+            return (int)(reservePrice * priceDiscountFloat);
+        }
+        // After that, use average discount factor of winning bids
+        else{
+            return (int)(reservePrice * calculateAverageWinningBid());
+        }
+
     }
 
-  // Calculate the average price discount on a discount factor that is still
-  // profitable
-  // TODO: Update price discount factor based on past and arrange into buckets
-  protected double calculatePriceDiscountFactor(){
-    return priceDiscountFactor;
-  }
+    protected float calculateAverageWinningBid(){
+        float average = 0.0f;
+        for(int i = 0; i < successfulBidDiscounts.size(); i++){
+            average += successfulBidDiscounts.get(i);
+        }
+
+        return average / successfulBidDiscounts.size();
+    }
 
   /**
    * STEP 3:
@@ -224,6 +242,18 @@ public class WolfAgent extends SCMAgent {
             order = newOrders[i];
             productID = order.getProductID();
             quantity = order.getQuantity();
+
+            // Keep track of successful bid discounts here
+            // Check the rfq hash
+            Integer rfqQuantity = this.rfqHash.get(productID);
+            if(rfqQuantity != null){
+                if(rfqQuantity == quantity){
+                    // Get the discount offered on the product
+                    float tempPrice = this.priceHash.get(productID);
+                    this.successfulBidDiscounts.add(tempPrice);
+                }
+            }
+
             // Get the components required to produce the product
             int[] components = bomBundle.getComponentsForProductID(productID);
             if (components != null) {
