@@ -98,19 +98,25 @@ public class WolfAgent extends SCMAgent {
     /** Latest possible due date when bidding for customer orders */
     private int lastBidDueDate;
 
+    //*************************************************************************
+    //HashMaps
+
     // Store a hashtable with productID and quantity demanded
     private HashMap<Integer, Integer> rfqHash;
 
     // Store a hashtable with the productID and the price discount offered
     private HashMap<Integer, Float> priceHash;
-
-    // Price requested from supplier
-    private HashMap<String, Integer> supplierPriceHash;
-    private HashMap<String, Float> supplierPriceDiscountHash;
+    // Supplier name, value as supplier
     private HashMap<String, Integer> supplierValueHash;
     // RFQ ID, Quantity
     private HashMap<Integer, Integer> supplierRFQQuantityHash;
 
+    // Price requested from supplier
+    //private HashMap<String, Integer> supplierPriceHash;
+    //private HashMap<String, Float> supplierPriceDiscountHash;
+
+    // Date to cutoff random bids and base bids on success history
+    private int randomCutoff = 40;
 
     /** Offer price discount factor when bidding for customer orders */
     private float priceDiscountFactor = 0.2f;
@@ -156,8 +162,9 @@ public class WolfAgent extends SCMAgent {
 
         FactoryStatus factoryStatus = new FactoryStatus(componentDemand);
         // If the factory utilization is too high, don't accept new offers
-        if(factoryStatus.getUtilization() > 0.9){
+        if(factoryStatus.getUtilization() > 0.93){
             // TODO: check if orders can be filled using exisiting inventory
+            // Currently checked in step 8, so for now, do nothing
         }
         else{
             for (int i = 0, n = rfqBundle.size(); i < n; i++) {
@@ -206,26 +213,29 @@ public class WolfAgent extends SCMAgent {
         // Allows us to compare rfqHash to priceHash to see if bid was
         // successful
         this.priceHash.put(id, priceDiscountFloat);
-        // Use random bids for first 50 days of simulation
-        if(this.getCurrentDate() < 50){
+        // Use random bids for first randomCutoff days of simulation
+        if(this.getCurrentDate() < randomCutoff){
             return (int)(reservePrice * priceDiscountFloat);
         }
         // After that, use average discount factor of winning bids
         else{
-            return (int)(reservePrice * calculateAverageWinningBid());
+            return (int)(reservePrice * calculateAverageWinningRatio());
         }
     }
 
     // Calculates the average price discount stored in the
     // successfulBidDiscounts Array List
     // Helper Method for createCustomerOfferPrice
-    protected float calculateAverageWinningBid(){
+    protected float calculateAverageWinningRatio(){
         float average = 0.0f;
         for(int i = 0; i < successfulBidDiscounts.size(); i++){
             average += successfulBidDiscounts.get(i);
         }
         //TODO: could tweak this to get closer to floor of winning bids
         // rather than the average
+        // Using price report.getLowestPrice, however that would require
+        // linear regression or some statistical methods, as the price
+        // returned is the end price, not the ratio
         return average / successfulBidDiscounts.size();
     }
 
@@ -269,7 +279,6 @@ public class WolfAgent extends SCMAgent {
                 for (int j = 0, m = components.length; j < m; j++) {
                     // Add the required components to the inventory
                     // This assumes the can be supplied
-                    // TODO: Update inventory with the actual quantity supplied
                     componentDemand.addInventory(components[j], quantity);
                 }
             }
@@ -299,7 +308,7 @@ public class WolfAgent extends SCMAgent {
                 String[] suppliers = catalog.getSuppliersForProduct(productID);
                 if(suppliers != null){
                     int supIndex = calculateBestSupplier(suppliers);
-                    // TODO: Calculate best reserve
+
                     int reservePrice = calculateSupplierReservePrice();
                     int rfqID =
                     addSupplierRFQ(suppliers[supIndex], productID, quantity,
@@ -324,13 +333,24 @@ public class WolfAgent extends SCMAgent {
     protected int calculateBestSupplier(String[] suppliers){
         // If we have sufficient history, look at the hashtable of supplier
         // value to decide the best supplier to go with
-        if(this.getCurrentDate() > 50){
+
+        supplierValueHash = new HashMap<String, Integer>();
+
+        // Otherwise use random value to select a supplier
+        if(this.getCurrentDate() > randomCutoff){
             int tempSupplierValue = 0;
             int tempSupplier = 0;
             int tempValue = 0;
             for(int i=0; i<suppliers.length-1; i++){
                 // Lookup the value of the supplier in the hash table
-                tempSupplierValue = supplierValueHash.get(suppliers[i]);
+
+                if( supplierValueHash.get(suppliers[i]) != null){
+                    tempSupplierValue =supplierValueHash.get(suppliers[i]);
+                }
+                else{
+                    tempSupplierValue = 0;
+                }
+
                 // If the value is greater, choose that supplier
                 if(tempSupplierValue > tempValue){
                     tempValue = tempSupplierValue;
@@ -347,9 +367,11 @@ public class WolfAgent extends SCMAgent {
 
   // STEP 6:
   // Calculate a price to order components at while still being profitable
-  // TODO: Currently unbounded at 0
   protected int calculateSupplierReservePrice(){
-    if(this.getCurrentDate() > 50){
+    // TODO: Currently unbounded at 0
+    // Have no price constraints now because we will wean supplier offers in
+    // the next step.
+    if(this.getCurrentDate() > randomCutoff){
         //TODO: calculate a reserve price to request for that product
         //TODO: use the price report to calculate a good price
         return 0;
@@ -359,47 +381,53 @@ public class WolfAgent extends SCMAgent {
     }
   }
 
-  /**
-   * STEP 7:
-   * Called when a bundle of offers have been received from a
-   * supplier. In TAC03 SCM suppliers only send one offer bundle per
-   * day in reply to RFQs (and only if they had something to offer).
-   *
-   * @param supplierAddress the supplier that sent the offers
-   * @param offers a bundle of offers
-   */
-  protected void handleSupplierOffers(String supplierAddress,
+    /**
+    * STEP 7:
+    * Called when a bundle of offers have been received from a
+    * supplier. In TAC03 SCM suppliers only send one offer bundle per
+    * day in reply to RFQs (and only if they had something to offer).
+    *
+    * @param supplierAddress the supplier that sent the offers
+    * @param offers a bundle of offers
+    */
+    protected void handleSupplierOffers(String supplierAddress,
                       OfferBundle offers) {
-    // initialize min price to the last element in the array list
-        int minPrice = offers.getUnitPrice(offers.size() -1);
-        int minIndex = offers.size() -1;
+        // initialize min price to the last element in the array list
+            int minPrice = offers.getUnitPrice(offers.size() -1);
+            int minIndex = offers.size() -1;
 
-    // Earliest complete is always after partial offers so the offer
-    // bundle is traversed backwards to always accept earliest offer
-    // instead of the partial (the server will ignore the second
-    // order for the same offer).
-    // Here traverse forward until an offer is found of the correct quantity
-    // and cheapest
-    for (int i = 0;i < offers.size() - 1; i++) {
-        // Initialize the RFQ id
-        int rfqID = offers.getRFQID(i);
+        // Earliest complete is always after partial offers so the offer
+        // bundle is traversed backwards to always accept earliest offer
+        // instead of the partial (the server will ignore the second
+        // order for the same offer).
+        // Here traverse forward until an offer is found of
+        // the correct quantity and cheapest
+        for (int i = 0;i < offers.size() - 1; i++) {
+            // Initialize the RFQ id
+            int rfqID = offers.getRFQID(i);
 
-        // If the offer quantity matches the quantity requested
-        // i.e don't accept partial offers
-        if(offers.getQuantity(i) >= supplierRFQQuantityHash.get(rfqID)){
-            if(offers.getUnitPrice(i) <= minPrice){
-                minPrice = offers.getUnitPrice(i);
-                minIndex = i;
+            // If the offer quantity matches the quantity requested
+            // i.e don't accept partial offers
+            if(offers.getQuantity(i) >= supplierRFQQuantityHash.get(rfqID)){
+                if(offers.getUnitPrice(i) <= minPrice){
+                    minPrice = offers.getUnitPrice(i);
+                    minIndex = i;
+                }
             }
         }
+        if(offers.getQuantity(minIndex) > 0){
+            // Order the cheapest and most quickly produced offer.
+            addSupplierOrder(supplierAddress, offers, minIndex);
+
+            // If the supplier is selected, increase it's value in the HashMap
+            int tempValue = supplierValueHash.get(supplierAddress);
+            if(supplierValueHash.get(supplierAddress) != null){
+                supplierValueHash.put(supplierAddress, tempValue +1);
+            }
+            // Add the supplier to the supplier value hashMap?
+        }
+        sendSupplierOrders();
     }
-    if(offers.getQuantity(minIndex) > 0){
-        // Order the cheapest and most quickly produced offer.
-        addSupplierOrder(supplierAddress, offers, minIndex);
-        // Add the supplier to the supplier value hashMap?
-    }
-    sendSupplierOrders();
-  }
 
     /**
     * STEP 8:
@@ -409,7 +437,12 @@ public class WolfAgent extends SCMAgent {
     *
     * @param status a simulation status
     */
-        protected synchronized void handleSimulationStatus(SimulationStatus status) {
+    protected synchronized void handleSimulationStatus(SimulationStatus status)
+    {
+            // Clear HashMaps
+            this.rfqHash.clear();
+            this.priceHash.clear();
+            this.supplierRFQQuantityHash.clear();
 
         // The inventory for next day is calculated with todays deliveries
         // and production and is changed when production and delivery
