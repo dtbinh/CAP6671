@@ -1,13 +1,13 @@
-// Jaime Mantilla u79729892
+// Tui Popenoe
 // Copyright 2014
 
 // Execute from the command line in the src directory using
-// java -cp . vacworld.VacuumWorld -rand <number> u79729892
+// java -cp . vacworld.VacuumWorld -rand <number> PackageAgent
 // where <number> is an integer
 // Make sure the VacuumWorld.java file is updated to open
 // VacuumAgentWithState, not VacuumAgent
 
-package u79729892;
+package PackageAgent;
 
 import java.io.*;
 import java.util.Random;
@@ -16,62 +16,62 @@ import vacworld.*;
 import agent.*;
 
 public class VacAgentWithState extends Agent{
-	// If the vacuum comes into contact with a location over the 
+	// If the vacuum comes into contact with a location over the
 	// randomThreshold, it will choose a lower threshold direction
 	// to avoid covering squares it has already covered a lot
 	// (prevent repetition)
 	private int threshold = 6;
-		
+
 	// Assuming a max room size of 5x5
 	// If this changes, update the size of the grid.
-	// This grid is initialized to a 9x9 grid to allow for 
+	// This grid is initialized to a 9x9 grid to allow for
 	// relative mapping of location, ie a grid can be mapped into
-	// each quadrant of the 2d array depending on where the vacuum 
+	// each quadrant of the 2d array depending on where the vacuum
 	// begins.
 	private int gridWidth = 9, gridHeight = 9;
-	
+
 	private int[][] roomGrid = new int[gridWidth][gridHeight];
-	
+
 	// Stores the X and Y coordinates of the vacuum in relative space
 	// Initialize the start position of the vacuum to 4, 4
 	// the center of the 9x9 grid.
-	// This way, any direction the vacuum moves relative to the 
-	// start location can be marked. 
+	// This way, any direction the vacuum moves relative to the
+	// start location can be marked.
 	//
-	private int x = 4, y = 4;	
-	
+	private int x = 4, y = 4;
+
 	// North : 0
 	// East: 1
 	// South: 2
 	// West: 3
 	private int currentDirection = 0;
-	
+
 	// Direction booleans.
 	// These are flipped to true depending on the input
-	// from the percept passed to the agent. 
-	// The agent then selects and action and returns these 
-	// to false. 
+	// from the percept passed to the agent.
+	// The agent then selects and action and returns these
+	// to false.
 	private boolean dirtDetected = false;
 	private boolean turnLeft = false;
 	private boolean turnRight = false;
 	private boolean goForward = false;
 	private boolean shutOff = false;
-	
+
 	// Used to seed random
 	private Random random = new Random();
-		
+
 	// Change this if the number of dirt is known. Otherwise,
 	// the vacuum will continue searching until it hits the move limit
 	private int dirtCount = 4;
-	
-	// Change this to allow more or fewer moves to the vacuum. 
+
+	// Change this to allow more or fewer moves to the vacuum.
 	private int moveLimit = 100;
-	
+
 	// Current number of moves performed.
 	// numMoves is incremented each time an action is taken.
 	// if numMoves reaches the moveLimit, the vacuum will shutdown
 	private int numMoves = 0;
-	
+
 	private void printThreshold(){
 		System.out.println("THRESHOLD DETECTED");
 		System.out.println("+--+--+--+");
@@ -82,7 +82,7 @@ public class VacAgentWithState extends Agent{
 		System.out.println("|  |"+roomGrid[y+1][x] + "|   |");
 		System.out.println("+--+--+--+");
 	}
-	
+
 	// Set obstacles threshold value to a very high value
 	private void markObstacle(){
 		switch (this.currentDirection){
@@ -98,14 +98,14 @@ public class VacAgentWithState extends Agent{
 			case 3:
 				roomGrid[y][x-1] = 1000;
 				break;
-		}	
+		}
 		return;
 	}
-	
+
 	private void thresholdDetected(){
 		// Display the neighbors of the threshold
 		printThreshold();
-		
+
 		// Is north the smallest? (vs. West, East, South) If so, rotate towards it.
 		if((roomGrid[y-1][x] <=roomGrid[y][x-1]) && (roomGrid[y-1][x] <= roomGrid[y][x+1]) && (roomGrid[y-1][x] <= roomGrid[y+1][x]))
 		{
@@ -125,7 +125,7 @@ public class VacAgentWithState extends Agent{
 					this.turnRight = true;
 					this.changeDirection(1);
 					break;
-			}	
+			}
 			return;
 		}
 		// Is EAST the smallest? (vs. West, North, South) If so, rotate towards it.
@@ -147,7 +147,7 @@ public class VacAgentWithState extends Agent{
 					this.turnLeft = true;
 					this.changeDirection(-1);
 					break;
-			}	
+			}
 			return;
 		}
 		// Is SOUTH the smallest? (vs. West, East, North) If so, rotate towards it.
@@ -169,10 +169,10 @@ public class VacAgentWithState extends Agent{
 					this.turnLeft = true;
 					this.changeDirection(-1);
 					break;
-			}	
+			}
 			return;
 		}
-		// Is WEST the smallest? (vs. North, East, South) If so, rotate towards it. 
+		// Is WEST the smallest? (vs. North, East, South) If so, rotate towards it.
 		else if((roomGrid[y][x-1] <=roomGrid[y-1][x]) && (roomGrid[y][x-1] <= roomGrid[y][x+1]) && (roomGrid[y][x-1] <= roomGrid[y+1][x])){
 			switch (this.currentDirection){
 				case 0:
@@ -190,40 +190,40 @@ public class VacAgentWithState extends Agent{
 				case 3:
 					this.goForward = true;
 					break;
-			}	
+			}
 			return;
 		}
 		else{
 			System.out.println("THRESHOLD ERROR");
 		}
-		
+
 		System.out.println("Direction Selected: " + this.currentDirection);
 	}
-	
+
 	@Override
 	public void see(Percept p) {
 		// Increment numMoves. If over the moveLimit,
-		// the vacuum will shutdown.		
+		// the vacuum will shutdown.
 		numMoves++;
-		
+
 		// Set grid to explored
-				
+
 		// If dirt is detected, vacuum it up.
 		// Reduce the count of dirt remaining in the
-		// simulation. 
+		// simulation.
 		if(((VacPercept) p).seeDirt()){
 			this.dirtDetected = true;
 			dirtCount--;
 
 			return;
 		}
-		
+
 		// If an obstacle is detected, turn
 		// randomly, to avoid infinite loop scenarios
 		else if(((VacPercept) p).seeObstacle()){
-			
+
 			this.markObstacle();
-			
+
 			this.selectRandomDirection();
 			return;
 		}
@@ -234,7 +234,7 @@ public class VacAgentWithState extends Agent{
 
 			return;
 		}
-		
+
 		// Here we deviate.
 		// If the grid location the vacuum is currently on is over a certain threshold
 		// peek at the adjacent squares in the constructed internal map
@@ -243,29 +243,29 @@ public class VacAgentWithState extends Agent{
 			this.thresholdDetected();
 			return;
 		}
-		
-		// If all the dirt has been cleaned, 
+
+		// If all the dirt has been cleaned,
 		else if(this.dirtCount == 0 || (numMoves >= moveLimit)){
 			this.shutOff = true;
 
 			return;
 		}
-		
-		// If there are no other inputs, 
+
+		// If there are no other inputs,
 		// Go forward
 		else{
 			this.goForward = true;
-	
+
 			return;
-		}		
+		}
 	}
 
 	// Flip current location to searched ('1')
-	private void markGrid(int a, int  b){		
-		this.roomGrid[a][b] += 1;	
+	private void markGrid(int a, int  b){
+		this.roomGrid[a][b] += 1;
 	}
-	
-	// Print a view of the searched locations for 
+
+	// Print a view of the searched locations for
 	// debugging purposes
 	private void printSearchedGrid(){
 		for (int j=0; j < gridWidth; j++)
@@ -275,7 +275,7 @@ public class VacAgentWithState extends Agent{
 			}
 			else{
 				System.out.print("  " + (j-4));
-			}			
+			}
 		}
 		System.out.println();
 
@@ -283,7 +283,7 @@ public class VacAgentWithState extends Agent{
 		for (int j=0; j < gridWidth; j++)
 		{
 			System.out.print("+--");
-		}			
+		}
 		System.out.println("+");
 
 		for (int i=0; i < gridHeight; i++) {
@@ -293,7 +293,7 @@ public class VacAgentWithState extends Agent{
 			else{
 				System.out.print(" " + (i-4) + "|");
 			}
-			
+
 			for (int j=0; j < gridWidth; j++) {
 				if(i == this.y && j == this.x){
 					switch (this.currentDirection){
@@ -313,7 +313,7 @@ public class VacAgentWithState extends Agent{
 				}
 				else if (roomGrid[i][j] == 0){
 					System.out.print(" ");
-				}				
+				}
 				else if(roomGrid[i][j] == 1000){
 					System.out.print("X");
 				}
@@ -321,10 +321,10 @@ public class VacAgentWithState extends Agent{
 					// Use this to increase "height" of grid location
 					System.out.print(roomGrid[i][j]);
 					//System.out.print(" ");
-				}				
+				}
 				System.out.print(" |");
 			}
-			
+
 			// Print border
 			System.out.println();
 			System.out.print(" +");
@@ -335,11 +335,11 @@ public class VacAgentWithState extends Agent{
 		}
 		System.out.println();
 	}
-	
+
 	// Select a random direction to turn
 	private void selectRandomDirection(){
 		int randInt = random.nextInt(100);
-		
+
 		if(randInt <50)
 		{
 			this.turnRight = true;
@@ -354,7 +354,7 @@ public class VacAgentWithState extends Agent{
 			// A negative 1 means the vacuum is turning left
 			this.changeDirection(-1);
 		}
-		
+
 		return;
 	}
 
@@ -373,11 +373,11 @@ public class VacAgentWithState extends Agent{
 			if(this.currentDirection == 3)
 			{
 				this.currentDirection = 0;
-			}			
+			}
 			else
 			{
 				this.currentDirection++;
-			}			
+			}
 		}
 		// Left turn
 		else if(turnDirection == -1)
@@ -411,10 +411,10 @@ public class VacAgentWithState extends Agent{
 		else if(direction == 3){
 			this.x--;
 		}
-				
+
 		this.printVector();
 	}
-	
+
 	private void printVector(){
 		System.out.println("Current Relative Location: " + (this.x - 4) + ", " + (this.y-4));
 		System.out.print("Current Direction: " + this.currentDirection);
@@ -433,16 +433,16 @@ public class VacAgentWithState extends Agent{
 				break;
 		}
 	}
-	
+
 		@Override
 	public Action selectAction() {
 		this.printVector();
 		this.printSearchedGrid();
-		
+
 		if(this.dirtDetected){
 			// Mark the grid to show the currentLocation.
 			this.markGrid(this.y, this.x);
-			
+
 			System.out.println("Suck Dirt");
 			this.dirtDetected = false;
 			return new SuckDirt();
@@ -458,17 +458,17 @@ public class VacAgentWithState extends Agent{
 		if(this.goForward){
 			// Mark the grid to show the currentLocation.
 			this.markGrid(this.y, this.x);
-		
+
 			this.calculateNewLocation(this.currentDirection);
 
-			this.goForward = false; 
+			this.goForward = false;
 			return new GoForward();
 		}
 		if(this.shutOff){
 			this.shutOff = false;
 			return new ShutOff();
 		}
-	
+
 		// Else return a null action
 		return null;
 	}
@@ -478,14 +478,14 @@ public class VacAgentWithState extends Agent{
 	public String getId() {
 		return "u79729892";
 	}
-	
+
 	public String toString(){
 		System.out.println("dirtDetected: " + dirtDetected);
 		System.out.println("turnLeft: " + turnLeft);
 		System.out.println("turnRight: " + turnRight);
 		System.out.println("goForward: " + goForward);
 		System.out.println("shutOff: " + shutOff);
-		
+
 		return "\n";
 	}
 }

@@ -3,7 +3,7 @@
 
 
 // Execute from the command line in the src directory using
-// java -cp . vacworld.VacuumWorld -rand <number> u79729892
+// java -cp . vacworld.VacuumWorld -rand <number> VacuumAgent
 // where <number> is an integer
 
 package VacAgent;
